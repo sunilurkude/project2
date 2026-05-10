@@ -7,6 +7,7 @@ import {
   APP_TITLE,
   ADMIN_CONTACT_MOBILE,
   DEFAULT_PAYSLIP_MAPPINGS,
+  MANAGER_USER_ID,
 } from "./constants";
 import Tabs from "./components/Tabs";
 import LoginForm from "./components/LoginForm";
@@ -235,12 +236,12 @@ const App: React.FC = () => {
                   adminNotifications={data.adminNotifications.filter(
                     (n) =>
                       n.adminId === currentTeacherDetails.adminId ||
-                      n.adminId === "sunilurkude",
+                      n.adminId === MANAGER_USER_ID,
                   )}
                   infoRequests={data.infoRequests.filter(
                     (req) =>
                       req.adminId === currentTeacherDetails.adminId ||
-                      req.adminId === "sunilurkude",
+                      req.adminId === MANAGER_USER_ID,
                   )}
                   teacherInfoResponses={data.teacherInfoResponses.filter(
                     (r) =>
