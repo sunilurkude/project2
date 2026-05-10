@@ -9,6 +9,7 @@ import {
   MonthlyTeacherSalaryData,
   Challan,
   LoggedInUser,
+  AuditLog,
 } from "../types";
 import { DEFAULT_PAYSLIP_MAPPINGS } from "../constants";
 import { hashData } from "../utils/authUtils";
@@ -48,8 +49,10 @@ interface DataContextValue {
   infoRequests: InfoRequest[];
   teacherInfoResponses: TeacherInfoResponse[];
   challans: Challan[];
+  auditLogs: AuditLog[];
 
   // CRUD operations
+  handleAddAuditLog: (action: string, details: string) => Promise<void>;
   handleCreateTeachers: (newTeachers: Teacher[]) => Promise<void>;
   handleDeleteTeacher: (shalarthId: string) => Promise<void>;
   handleProcessPaybillUpload: (
@@ -101,6 +104,7 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
   const [infoRequests, setInfoRequests] = useState<InfoRequest[]>([]);
   const [teacherInfoResponses, setTeacherInfoResponses] = useState<TeacherInfoResponse[]>([]);
   const [challans, setChallans] = useState<Challan[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Load data when user logs in/out
   useEffect(() => {
@@ -112,6 +116,7 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
         setAdminNotifications([]);
         setInfoRequests([]);
         setTeacherInfoResponses([]);
+        setAuditLogs([]);
         return;
       }
 
@@ -124,6 +129,7 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
           infoRequests: [],
           infoResponses: [],
           challans: [],
+          auditLogs: [],
         };
 
         if (loggedInUser.role === UserRole.Admin) {
@@ -134,6 +140,7 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
           filters.notifications.push({ column: "admin_id", value: adminId });
           filters.infoRequests.push({ column: "admin_id", value: adminId });
           filters.challans.push({ column: "admin_id", value: adminId });
+          filters.auditLogs.push({ column: "admin_id", value: adminId });
         } else if (loggedInUser.role === UserRole.Teacher) {
           const sid = loggedInUser.username;
           filters.teachers.push({ column: "shalarth_id", value: sid });
@@ -148,7 +155,7 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
           }
         }
 
-        const [dbTeachers, dbPaybills, dbSalaryData, dbNotifications, dbInfoRequests, dbInfoResponses, dbChallans] =
+        const [dbTeachers, dbPaybills, dbSalaryData, dbNotifications, dbInfoRequests, dbInfoResponses, dbChallans, dbAuditLogs] =
           await Promise.all([
             fetchAllRows("teachers", filters.teachers),
             fetchAllRows("paybills", filters.paybills),
@@ -157,6 +164,7 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
             fetchAllRows("info_requests", filters.infoRequests),
             fetchAllRows("info_responses", filters.infoResponses),
             fetchAllRows("challans", filters.challans),
+            fetchAllRows("audit_logs", filters.auditLogs),
           ]);
 
         if (dbTeachers.data) setTeachers(dbTeachers.data.map((t: any) => ({
@@ -189,6 +197,10 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
           id: c.id, adminId: c.admin_id, month: c.month, fy: c.fy, tanNumber: c.tan_number,
           tanName: c.tan_name, fileName: c.file_name, fileData: c.file_data, uploadedAt: c.uploaded_at,
         })));
+        if (dbAuditLogs.data) setAuditLogs(dbAuditLogs.data.map((a: any) => ({
+          id: a.id, action: a.action, details: a.details, userId: a.user_id,
+          userName: a.user_name, userRole: a.user_role, adminId: a.admin_id, createdAt: a.created_at,
+        })).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       } catch (err) {
         console.error("Error loading data from Supabase:", err);
         onError("Failed to load data from Supabase.");
@@ -211,6 +223,28 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
 
   // ---- CRUD Handlers ----
 
+  const handleAddAuditLog = useCallback(async (action: string, details: string) => {
+    if (!loggedInUser) return;
+    try {
+      const newLog = {
+        id: crypto.randomUUID(),
+        action,
+        details,
+        user_id: loggedInUser.username,
+        user_name: loggedInUser.username,
+        user_role: loggedInUser.role,
+        admin_id: loggedInUser.role === UserRole.Admin ? loggedInUser.username : null,
+      };
+      const { error } = await supabase.from('audit_logs').insert([newLog]);
+      if (error) throw error;
+      if (loggedInUser.role !== UserRole.Teacher) {
+        setAuditLogs(prev => [{ ...newLog, adminId: newLog.admin_id, userId: newLog.user_id, userName: newLog.user_name, userRole: newLog.user_role, createdAt: new Date().toISOString() }, ...prev]);
+      }
+    } catch (err) {
+      console.error("Failed to add audit log", err);
+    }
+  }, [loggedInUser]);
+
   const handleAddChallan = useCallback(async (newChallan: Challan) => {
     try {
       const { error } = await supabase.from('challans').insert([{
@@ -220,16 +254,18 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
       }]);
       if (error) throw error;
       setChallans((prev) => [newChallan, ...prev]);
+      handleAddAuditLog('ADD_CHALLAN', `Added TDS Challan for ${newChallan.fy} - ${newChallan.month}`);
     } catch (err) { console.error("Failed to add challan", err); }
-  }, []);
+  }, [handleAddAuditLog]);
 
   const handleDeleteChallan = useCallback(async (id: string) => {
     try {
       const { error } = await supabase.from('challans').delete().eq('id', id);
       if (error) throw error;
       setChallans((prev) => prev.filter((c) => c.id !== id));
+      handleAddAuditLog('DELETE_CHALLAN', `Deleted TDS Challan ID: ${id}`);
     } catch (err) { console.error("Failed to delete challan", err); }
-  }, []);
+  }, [handleAddAuditLog]);
 
   const getLatestSalaryRecord = useCallback(async (shalarthId: string): Promise<MonthlyTeacherSalaryData | null> => {
     if (loggedInUser && monthlySalaryDataList.length > 0) {
@@ -438,22 +474,24 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
         if (error) throw error;
       }
       setTeachers((prev) => [...prev, ...uniqueNewTeachers]);
+      handleAddAuditLog('ADD_TEACHERS', `Created ${uniqueNewTeachers.length} new teacher(s)`);
     } catch (err) {
       console.error("Error creating teachers:", err);
       onError("Failed to save teachers.");
     }
-  }, [teachers]);
+  }, [teachers, handleAddAuditLog]);
 
   const handleDeleteTeacher = useCallback(async (shalarthId: string) => {
     try {
       const { error } = await supabase.from("teachers").delete().eq("shalarth_id", shalarthId);
       if (error) throw error;
       setTeachers((prev) => prev.filter((t) => t.shalarthId !== shalarthId));
+      handleAddAuditLog('DELETE_TEACHER', `Deleted teacher with Shalarth ID: ${shalarthId}`);
     } catch (err) {
       console.error("Error deleting teacher:", err);
       onError("Failed to delete teacher.");
     }
-  }, []);
+  }, [handleAddAuditLog]);
 
   const handleProcessPaybillUpload = useCallback(
     async (
@@ -500,12 +538,13 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
 
         setPaybills((prev) => [newPaybillMaster, ...prev].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()));
         setMonthlySalaryDataList((prev) => [...prev, ...newSalaryDataEntries]);
+        handleAddAuditLog('ADD_DATA', `Uploaded paybill data for ${paybillMeta.month} ${paybillMeta.year}`);
       } catch (err: any) {
         console.error("Upload process failed:", err);
         onError(`Failed to save paybill data: ${err?.message || "Unknown error"}`);
       }
     },
-    [paybills, monthlySalaryDataList, loggedInUser],
+    [paybills, monthlySalaryDataList, loggedInUser, handleAddAuditLog],
   );
 
   const handleDeletePaybill = useCallback(async (paybillIdToDelete: string) => {
@@ -518,11 +557,12 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
       if (err2) throw err2;
       setPaybills((prev) => prev.filter((p) => p.id !== paybillIdToDelete));
       setMonthlySalaryDataList((prev) => prev.filter((d) => !(d.month === paybillToDelete.month && d.year === paybillToDelete.year)));
+      handleAddAuditLog('DELETE_DATA', `Deleted paybill data for ${paybillToDelete.month} ${paybillToDelete.year}`);
     } catch (err) {
       console.error("Delete paybill failed:", err);
       onError("Failed to delete paybill.");
     }
-  }, [paybills]);
+  }, [paybills, handleAddAuditLog]);
 
   const handleAddAdminNotification = useCallback(async (newNotification: AdminNotification) => {
     try {
@@ -534,22 +574,24 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
       }]);
       if (error) throw error;
       setAdminNotifications((prev) => [finalNotification, ...prev].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()));
+      handleAddAuditLog('ADD_NOTIFICATION', `Added notification: "${finalNotification.text?.substring(0, 50)}..."`);
     } catch (err) {
       console.error("Add notification failed:", err);
       onError("Failed to save notification.");
     }
-  }, [loggedInUser]);
+  }, [loggedInUser, handleAddAuditLog]);
 
   const handleDeleteAdminNotification = useCallback(async (notificationId: string) => {
     try {
       const { error } = await supabase.from("notifications").delete().eq("id", notificationId);
       if (error) throw error;
       setAdminNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      handleAddAuditLog('DELETE_NOTIFICATION', `Deleted notification ID: ${notificationId}`);
     } catch (err) {
       console.error("Delete notification failed:", err);
       onError("Failed to delete notification.");
     }
-  }, []);
+  }, [handleAddAuditLog]);
 
   const handleAddInfoRequest = useCallback(async (newRequest: InfoRequest) => {
     try {
@@ -560,11 +602,12 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
       }]);
       if (error) throw error;
       setInfoRequests((prev) => [finalRequest, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      handleAddAuditLog('ADD_INFO_REQUEST', `Created info request: "${finalRequest.subject?.substring(0, 50)}..."`);
     } catch (err) {
       console.error("Add info request failed:", err);
       onError("Failed to save data request.");
     }
-  }, [loggedInUser]);
+  }, [loggedInUser, handleAddAuditLog]);
 
   const handleDeleteInfoRequest = useCallback(async (requestId: string) => {
     try {
@@ -574,11 +617,12 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
       if (err2) throw err2;
       setInfoRequests((prev) => prev.filter((req) => req.id !== requestId));
       setTeacherInfoResponses((prev) => prev.filter((res) => res.requestId !== requestId));
+      handleAddAuditLog('DELETE_INFO_REQUEST', `Deleted info request ID: ${requestId}`);
     } catch (err) {
       console.error("Delete info request failed:", err);
       onError("Failed to delete data request.");
     }
-  }, []);
+  }, [handleAddAuditLog]);
 
   const handleAddOrUpdateTeacherInfoResponse = useCallback(async (response: TeacherInfoResponse) => {
     try {
@@ -600,16 +644,17 @@ export const DataProvider = ({ children, loggedInUser, onError, onSuccess }: Dat
         }
         return [...prev, response];
       });
+      handleAddAuditLog('SUBMIT_INFO_RESPONSE', `Submitted response for info request ID: ${response.requestId}`);
     } catch (err) {
       console.error("Save info response failed:", err);
       onError("Failed to submit response.");
     }
-  }, [teacherInfoResponses]);
+  }, [teacherInfoResponses, handleAddAuditLog]);
 
   const value: DataContextValue = {
     teachers, paybills, monthlySalaryDataList, latestSalaryDataForCurrentTeacher,
-    adminNotifications, infoRequests, teacherInfoResponses, challans,
-    handleCreateTeachers, handleDeleteTeacher, handleProcessPaybillUpload, handleDeletePaybill,
+    adminNotifications, infoRequests, teacherInfoResponses, challans, auditLogs,
+    handleAddAuditLog, handleCreateTeachers, handleDeleteTeacher, handleProcessPaybillUpload, handleDeletePaybill,
     handleAddAdminNotification, handleDeleteAdminNotification, handleAddInfoRequest,
     handleDeleteInfoRequest, handleAddOrUpdateTeacherInfoResponse, handleAddChallan, handleDeleteChallan,
     getLatestSalaryRecord, onVerifyShalarth, onVerifyMobile, onVerifyAadhaar, onVerifyPan,

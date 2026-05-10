@@ -174,6 +174,8 @@ const App: React.FC = () => {
                 monthlySalaryDataList={data.monthlySalaryDataList}
                 payslipMappings={DEFAULT_PAYSLIP_MAPPINGS}
                 challans={data.challans}
+                paybills={data.paybills}
+                auditLogs={data.auditLogs}
               />
             )}
             {loggedInUser.role === UserRole.Admin && (

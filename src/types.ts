@@ -4,6 +4,17 @@ export enum UserRole {
   Teacher = 'teacher',
 }
 
+export interface AuditLog {
+  id: string;
+  action: string;
+  details: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  adminId: string | null;
+  createdAt: string;
+}
+
 export interface Admin {
   userId: string;
   passwordHash: string; // SHA-256 hashed password
@@ -149,6 +160,8 @@ export enum ManagerPage {
   GetData = 'getData',
   Download = 'download',
   TDSChallans = 'tdsChallans',
+  Reports = 'reports',
+  ActivityLogs = 'activityLogs',
 }
 
 // For mapping payslip fields to Excel columns

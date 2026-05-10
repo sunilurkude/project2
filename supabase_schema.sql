@@ -3,6 +3,7 @@
 -- Uses session-level app settings for RLS (not Supabase Auth - see NOTE at bottom).
 
 -- 1. DROP EXISTING TABLES (order matters due to foreign keys)
+DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS info_responses;
 DROP TABLE IF EXISTS info_requests;
 DROP TABLE IF EXISTS notifications;
@@ -13,6 +14,17 @@ DROP TABLE IF EXISTS challans;
 DROP TABLE IF EXISTS admins;
 
 -- 2. CREATE TABLES
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id TEXT PRIMARY KEY,
+    action TEXT NOT NULL,
+    details TEXT,
+    user_id TEXT NOT NULL,
+    user_name TEXT,
+    user_role TEXT NOT NULL,
+    admin_id TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS admins (
     user_id TEXT PRIMARY KEY,
     password_hash TEXT NOT NULL,
@@ -112,6 +124,7 @@ CREATE TABLE IF NOT EXISTS challans (
 );
 
 -- 3. INDEXES for performance
+CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON audit_logs(admin_id);
 CREATE INDEX IF NOT EXISTS idx_teachers_admin_id ON teachers(admin_id);
 CREATE INDEX IF NOT EXISTS idx_teachers_shalarth_id ON teachers(shalarth_id);
 CREATE INDEX IF NOT EXISTS idx_salary_data_teacher_shalarth_id ON salary_data(teacher_shalarth_id);
@@ -124,6 +137,7 @@ CREATE INDEX IF NOT EXISTS idx_info_responses_request_id ON info_responses(reque
 CREATE INDEX IF NOT EXISTS idx_challans_admin_id ON challans(admin_id);
 
 -- 4. ENABLE RLS
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE paybills ENABLE ROW LEVEL SECURITY;
@@ -144,6 +158,17 @@ DROP POLICY IF EXISTS "Public Access Requests" ON info_requests;
 DROP POLICY IF EXISTS "Public Access Responses" ON info_responses;
 DROP POLICY IF EXISTS "Public Access Challans" ON challans;
 DROP POLICY IF EXISTS "Teachers see own rows" ON teachers;
+
+DROP POLICY IF EXISTS "Manager accesses all audit logs" ON audit_logs;
+
+-- Audit Logs policies
+CREATE POLICY "Anyone can insert audit logs"
+    ON audit_logs FOR INSERT
+    WITH CHECK (true);
+
+CREATE POLICY "Manager accesses all audit logs"
+    ON audit_logs FOR SELECT
+    USING (current_setting('app.is_manager', true) = 'true');
 
 -- Admins table: anyone can read (needed for login), only managers can write
 CREATE POLICY "Admins can read all for login"

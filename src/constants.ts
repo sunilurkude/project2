@@ -1,7 +1,7 @@
 
 import { PayslipFieldMapping } from './types';
 
-export const MANAGER_USER_ID = 'sunilurkude';
+export const MANAGER_USER_ID = import.meta.env.VITE_MANAGER_USER_ID || 'admin_manager';
 export const APP_TITLE = 'Teachers Payslip Portal';
 export const ADMIN_CONTACT_MOBILE = '123-456-7890'; // Mock admin contact number — replace in production
 

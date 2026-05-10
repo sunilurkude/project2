@@ -6,6 +6,7 @@ import {
 } from "../../types";
 import { PrinterIcon, DocumentDownloadIcon } from "../icons/FeatureIcons";
 import { getValueFromRow } from "../../utils/payslipUtils"; // Import from new utility file
+import { useData } from "../../contexts/DataContext";
 // @ts-ignore
 import html2pdf from "html2pdf.js";
 
@@ -118,6 +119,7 @@ export const PayslipDisplay: React.FC<PayslipDisplayProps> = ({
   targetYear,
 }) => {
   const payslipPrintAreaRef = useRef<HTMLDivElement>(null);
+  const { handleAddAuditLog } = useData();
 
   const getMappedValue = (
     mapping: PayslipFieldMapping,
@@ -286,6 +288,7 @@ export const PayslipDisplay: React.FC<PayslipDisplayProps> = ({
     };
 
     html2pdf().set(opt).from(payslipElement).save();
+    handleAddAuditLog('DOWNLOAD_PAYSLIP', `Downloaded payslip for ${safeTargetMonth} ${safeTargetYear}`);
   };
 
   const maxRows = Math.max(

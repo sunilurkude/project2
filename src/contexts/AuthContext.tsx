@@ -86,38 +86,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               mobile: a.mobile || "",
             })),
           );
-        } else {
-          const defaultAdmins: Admin[] = [
-            {
-              userId: "sunilurkude",
-              passwordHash: hashData("manager123"),
-              name: "Sunil Urkude",
-              email: "sunilurkude.2010@gmail.com",
-              mobile: "0123456789",
-            },
-            {
-              userId: "admin",
-              passwordHash: hashData("admin123"),
-              name: "Sample Admin",
-              email: "admin@example.com",
-              mobile: "0123456789",
-            },
-          ];
-          setAdmins(defaultAdmins);
-          supabase
-            .from("admins")
-            .insert(
-              defaultAdmins.map((a) => ({
-                user_id: a.userId,
-                password_hash: a.passwordHash,
-                name: a.name,
-                email: a.email,
-                mobile: a.mobile,
-              })),
-            )
-            .then(({ error }) => {
-              if (error) console.error("Failed to auto-insert default admins:", error);
-            });
         }
       } catch (err) {
         console.error("Error loading admins:", err);
@@ -136,13 +104,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsErrorModalOpen(false);
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     setLoggedInUser(null);
     setError(null);
     setIsErrorModalOpen(false);
     setActiveLoginTab(UserRole.Teacher);
     setIsRegistering(false);
     setSuccessMessage(null);
+    try {
+      await supabase.rpc('set_session_user', { user_id: '', is_manager: false });
+    } catch (err) {
+      console.error(err);
+    }
   }, []);
 
   const handleLogin = useCallback(
@@ -190,6 +163,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsErrorModalOpen(true);
       };
 
+      const addAuditLog = (userType: UserRole, userIdentifier: string) => {
+        const adminId = userType === UserRole.Admin ? userIdentifier : null;
+        supabase.from('audit_logs').insert([{
+          id: crypto.randomUUID(),
+          action: 'LOGIN',
+          details: `User logged in as ${userType}`,
+          user_id: userIdentifier,
+          user_name: userIdentifier,
+          user_role: userType,
+          admin_id: adminId,
+        }]).then(({ error }) => { if (error) console.error("Audit log failed", error) });
+      };
+
       const recordSuccess = () => {
         setLoginAttempts((prev) => {
           const next = { ...prev };
@@ -207,11 +193,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (adminUser) {
           recordSuccess();
-          if (usernameToLogin === "sunilurkude" || usernameToLogin === MANAGER_USER_ID) {
-            setLoggedInUser({ role: UserRole.Manager, username: usernameToLogin });
-          } else {
-            setLoggedInUser({ role: UserRole.Admin, username: usernameToLogin });
-          }
+          const r = (usernameToLogin === MANAGER_USER_ID) ? UserRole.Manager : UserRole.Admin;
+          addAuditLog(r, usernameToLogin);
+          setLoggedInUser({ role: r, username: usernameToLogin });
+          await supabase.rpc('set_session_user', { user_id: usernameToLogin, is_manager: r === UserRole.Manager });
         } else {
           recordFailure();
         }
@@ -241,12 +226,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (teacherUser.isRegistered && teacherUser.pin_hashed) {
               if (verifyHash(secretValue, teacherUser.pin_hashed)) {
                 recordSuccess();
+                addAuditLog(UserRole.Teacher, usernameToLogin);
                 setLoggedInUser({ role: UserRole.Teacher, username: usernameToLogin });
+                await supabase.rpc('set_session_user', { user_id: usernameToLogin, is_manager: false });
                 return;
               }
             } else if (verifyHash(secretValue, teacherUser.passwordHash)) {
               recordSuccess();
+              addAuditLog(UserRole.Teacher, usernameToLogin);
               setLoggedInUser({ role: UserRole.Teacher, username: usernameToLogin });
+              await supabase.rpc('set_session_user', { user_id: usernameToLogin, is_manager: false });
               return;
             }
           } else {
@@ -324,24 +313,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }]);
         if (error) throw new Error(error.message);
         setAdmins((prevAdmins) => [...prevAdmins, adminWithHashedPassword]);
+        supabase.from('audit_logs').insert([{
+          id: crypto.randomUUID(),
+          action: 'CREATE_ADMIN',
+          details: `Created admin user: ${newAdmin.userId} (${newAdmin.name})`,
+          user_id: loggedInUser?.username || 'system',
+          user_name: loggedInUser?.username || 'System',
+          user_role: loggedInUser?.role || 'manager',
+          admin_id: loggedInUser?.role === 'admin' ? loggedInUser?.username : null,
+        }]).then(({ error }) => { if (error) console.error("Audit log failed", error) });
       } catch (err: any) {
         console.error("Error creating admin:", err);
         throw new Error("Failed to create admin.");
       }
     },
-    [admins],
+    [admins, loggedInUser],
   );
 
   const handleDeleteAdmin = useCallback(async (adminUserId: string) => {
     try {
       await supabase.from("admins").delete().eq("user_id", adminUserId);
       setAdmins((prevAdmins) => prevAdmins.filter((admin) => admin.userId !== adminUserId));
+      supabase.from('audit_logs').insert([{
+        id: crypto.randomUUID(),
+        action: 'DELETE_ADMIN',
+        details: `Deleted admin user: ${adminUserId}`,
+        user_id: loggedInUser?.username || 'system',
+        user_name: loggedInUser?.username || 'System',
+        user_role: loggedInUser?.role || 'manager',
+        admin_id: loggedInUser?.role === 'admin' ? loggedInUser?.username : null,
+      }]).then(({ error }) => { if (error) console.error("Audit log failed", error) });
     } catch (err) {
       console.error("Error deleting admin:", err);
       setError("Failed to delete admin.");
       setIsErrorModalOpen(true);
     }
-  }, []);
+  }, [loggedInUser]);
 
   const value: AuthContextValue = {
     loggedInUser,

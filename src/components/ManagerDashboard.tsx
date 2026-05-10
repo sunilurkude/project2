@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { LogoutIcon, UserGroupIcon, BellIcon, UploadCloudIcon, ArrowDownTrayIcon, DocumentTextIcon } from './icons/FeatureIcons';
-import { ManagerPage, Admin, AdminNotification, InfoRequest, TabItem, Teacher, MonthlyTeacherSalaryData, PayslipFieldMapping, Challan } from '../types';
+import { LogoutIcon, UserGroupIcon, BellIcon, UploadCloudIcon, ArrowDownTrayIcon, DocumentTextIcon, ChartBarIcon, EyeIcon } from './icons/FeatureIcons';
+import { ManagerPage, Admin, AdminNotification, InfoRequest, TabItem, Teacher, MonthlyTeacherSalaryData, PayslipFieldMapping, Challan, Paybill, AuditLog } from '../types';
 import Tabs from './Tabs';
 import AdminList from './AdminList';
 import CreateAdminForm from './CreateAdminForm';
@@ -8,6 +8,8 @@ import NotificationPage from './admin/NotificationPage';
 import GetDataPage from './admin/GetDataPage';
 import AdminDownloadPage from './admin/AdminDownloadPage';
 import TDSChallansView from './TDSChallansView';
+import ManagerReportsPage from './manager/ManagerReportsPage';
+import ActivityLogsPage from './manager/ActivityLogsPage';
 
 interface ManagerDashboardProps {
   onLogout: () => void;
@@ -25,6 +27,8 @@ interface ManagerDashboardProps {
   monthlySalaryDataList: MonthlyTeacherSalaryData[];
   payslipMappings: PayslipFieldMapping[];
   challans: Challan[];
+  paybills: Paybill[];
+  auditLogs: AuditLog[];
 }
 
 const ManagerDashboard: React.FC<ManagerDashboardProps> = (props) => {
@@ -32,7 +36,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = (props) => {
     onLogout, admins, onCreateAdmin, onDeleteAdmin, username,
     adminNotifications, onAddAdminNotification, onDeleteAdminNotification,
     infoRequests, onAddInfoRequest, onDeleteInfoRequest,
-    teachers, monthlySalaryDataList, payslipMappings, challans
+    teachers, monthlySalaryDataList, payslipMappings, challans, paybills, auditLogs
   } = props;
   
   const [activePage, setActivePage] = useState<ManagerPage>(ManagerPage.Administrators);
@@ -42,7 +46,9 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = (props) => {
     { label: 'Notifications', value: ManagerPage.Notifications, icon: <BellIcon className="w-5 h-5 mr-2" /> },
     { label: 'Get Data', value: ManagerPage.GetData, icon: <UploadCloudIcon className="w-5 h-5 mr-2" /> },
     { label: 'Download Reports', value: ManagerPage.Download, icon: <ArrowDownTrayIcon className="w-5 h-5 mr-2" /> },
+    { label: 'Summary Reports', value: ManagerPage.Reports, icon: <ChartBarIcon className="w-5 h-5 mr-2" /> },
     { label: 'TDS Challans', value: ManagerPage.TDSChallans, icon: <DocumentTextIcon className="w-5 h-5 mr-2" /> },
+    { label: 'Activity Logs', value: ManagerPage.ActivityLogs, icon: <EyeIcon className="w-5 h-5 mr-2" /> },
   ];
 
   return (
@@ -94,10 +100,26 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = (props) => {
             showAdminFilter={true}
           />
         )}
+        {activePage === ManagerPage.Reports && (
+          <ManagerReportsPage
+            admins={admins}
+            teachers={teachers}
+            paybills={paybills}
+            monthlySalaryDataList={monthlySalaryDataList}
+            adminNotifications={adminNotifications}
+            infoRequests={infoRequests}
+            auditLogs={props.auditLogs}
+          />
+        )}
         {activePage === ManagerPage.TDSChallans && (
           <TDSChallansView
             challans={challans}
             admins={admins}
+          />
+        )}
+        {activePage === ManagerPage.ActivityLogs && (
+          <ActivityLogsPage
+            auditLogs={auditLogs}
           />
         )}
       </div>
