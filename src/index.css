@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-slate-100 bg-slate-900;
+  }
+}
+
+.no-print {
+  @media print {
+    display: none !important;
+  }
+}

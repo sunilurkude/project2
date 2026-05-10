@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <link rel="apple-touch-icon" href="/logo.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0ea5e9" />
+  <title>Teachers Payslip Portal</title>
+  <!-- Custom styles for non-Tailwind things -->
+  <style>
+    /* Custom scrollbar for a more polished look */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        margin: 0 !important;
+        padding: 0 !important;
+        background-color: white !important;
+      }
+      /* Hide elements not part of the printable content */
+      body > *:not(#root):not(.print-popup-content):not(.print-report-content) {
+        display: none !important;
+      }
+      #root > div > header,
+      #root > div > footer {
+        display: none !important;
+      }
+      #root > div > main {
+        display: block !important;
+        width: auto !important;
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100">
+  <div id="root"></div>
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+</html>

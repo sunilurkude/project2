@@ -1,0 +1,344 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payslip Print Template</title>
+    <style>
+        /* Basic Reset & Body Styles for Screen */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        /* Payslip Container for Screen */
+        .payslip-container {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px; /* Approx A4 width for screen viewing */
+            margin: 0 auto;
+        }
+
+        /* General Payslip Styling Elements */
+        .payslip-header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .payslip-header h1 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            color: #222;
+        }
+        .payslip-header h2 {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+            color: #444;
+        }
+
+        .employee-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 15px; /* row-gap column-gap */
+            margin-bottom: 15px;
+            font-size: 10px;
+        }
+        .employee-details div {
+            display: flex;
+        }
+        .employee-details .label {
+            font-weight: bold;
+            width: 120px; /* Adjust as needed */
+            color: #555;
+        }
+        .employee-details .value {
+            flex-grow: 1;
+            color: #333;
+        }
+        
+        hr.payslip-divider {
+            border: none;
+            border-top: 1px solid #999;
+            margin: 10px 0;
+        }
+
+        .salary-sections {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0px; /* No gap, borders will define separation */
+            font-size: 10px;
+            border: 1px solid #999; /* Outer border for the whole section block */
+        }
+
+        .salary-section {
+            padding: 8px;
+        }
+        .salary-section:not(:last-child) {
+             border-right: 1px solid #999;
+        }
+
+        .salary-section h3 {
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 8px;
+            text-decoration: underline;
+            color: #333;
+        }
+
+        .salary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .salary-item .item-label {
+            color: #444;
+            word-break: break-word;
+            padding-right: 5px;
+        }
+        .salary-item .item-amount {
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            text-align: right;
+        }
+        .salary-section hr.section-total-divider {
+            border: none;
+            border-top: 1px solid #aaa;
+            margin: 6px 0;
+        }
+
+        .section-total {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-top: 5px;
+            font-size: 10px;
+            color: #333;
+        }
+        .section-total .item-label {
+            color: #333;
+        }
+
+        .net-pay-section {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 11px;
+        }
+        .net-pay-section .net-pay-amount {
+            font-size: 12px;
+            font-weight: bold;
+            color: #222;
+        }
+        .net-pay-section .net-pay-words {
+            font-size: 10px;
+            font-style: italic;
+            color: #555;
+        }
+        
+        .payslip-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 9px;
+            font-style: italic;
+            color: #777;
+        }
+
+        /* Print Button Styling (Hidden on Print) */
+        .print-button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .print-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .print-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Print Specific Styles */
+        @media print {
+            /* Apply to the whole page for printing */
+            @page {
+                size: A4 portrait;
+                margin: 10mm; /* Standard margin for A4 */
+            }
+
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: white !important; /* Ensure background is white */
+                font-size: 9.5pt; /* Base font size for print - adjust as needed */
+                color: black !important;
+                -webkit-print-color-adjust: exact !important; /* Chrome, Safari */
+                print-color-adjust: exact !important; /* Firefox, Standard */
+            }
+            
+            /* Hide everything except the payslip content and its children */
+            body > *:not(.payslip-container-wrapper) {
+                display: none !important;
+            }
+            .payslip-container-wrapper { /* This wrapper ensures payslip is the only thing visible */
+                display: block !important;
+                visibility: visible !important;
+                width: 100% !important; /* Full width of the print area */
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .payslip-container {
+                visibility: visible !important;
+                display: block !important; /* Ensure it's a block element */
+                width: 100% !important; /* Take full width within @page margins */
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important; /* Let @page margins handle outer spacing */
+                border: 1px solid #666 !important; /* Slightly darker border for print */
+                box-shadow: none !important;
+                background-color: white !important;
+                color: black !important;
+            }
+
+            /* Ensure consistent font sizes and colors inside the payslip for print */
+            .payslip-container *, .payslip-container *:before, .payslip-container *:after {
+                color: black !important;
+                background-color: transparent !important; /* Or white if needed, but transparent usually better */
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+            
+            .payslip-header h1 { font-size: 16pt !important; color: black !important; }
+            .payslip-header h2 { font-size: 14pt !important; color: black !important; }
+            .employee-details { font-size: 9pt !important; }
+            .employee-details .label { color: black !important; font-weight: bold !important;}
+            .employee-details .value { color: black !important; }
+            
+            hr.payslip-divider { border-top-color: #333 !important; }
+
+            .salary-sections { font-size: 9pt !important; border-color: #333 !important; }
+            .salary-section { border-right-color: #333 !important; }
+            .salary-section h3 { font-size: 10pt !important; color: black !important; }
+            .salary-item .item-label { color: black !important; }
+            .salary-item .item-amount { color: black !important; font-weight: normal !important; }
+            .salary-section hr.section-total-divider { border-top-color: #666 !important; }
+            .section-total { font-size: 9pt !important; color: black !important; font-weight: bold !important; }
+
+            .net-pay-section { font-size: 10pt !important; }
+            .net-pay-section .net-pay-amount { font-size: 11pt !important; color: black !important; }
+            .net-pay-section .net-pay-words { font-size: 9pt !important; color: black !important; }
+            .payslip-footer { font-size: 8pt !important; color: black !important; }
+
+            /* Hide the print button itself */
+            .print-button-container {
+                display: none !important;
+            }
+            
+            /* Try to prevent elements from breaking across pages where undesirable */
+            .salary-section, .employee-details {
+                page-break-inside: avoid;
+            }
+            h1, h2, h3, h4, h5 {
+                page-break-after: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="payslip-container-wrapper">
+        <div class="payslip-container" id="payslipToPrint">
+            <div class="payslip-header">
+                <h1>ZP School Anjangaon</h1>
+                <h2>Payslip for the Month of July - 2024</h2>
+            </div>
+
+            <div class="employee-details">
+                <div><span class="label">Employee Name:</span><span class="value">Sunil R. Urkude</span></div>
+                <div><span class="label">Designation:</span><span class="value">Assistant Teacher</span></div>
+                <div><span class="label">Shalarth ID:</span><span class="value">SNRKD198707</span></div>
+                <div><span class="label">GPF/DCPS No:</span><span class="value">110012345678</span></div>
+                <div><span class="label">PAN No:</span><span class="value">ABCDE1234F</span></div>
+                <div><span class="label">Bank A/C No:</span><span class="value">XXXXXX12345</span></div>
+            </div>
+
+            <hr class="payslip-divider">
+
+            <div class="salary-sections">
+                <div class="salary-section">
+                    <h3>Emoluments</h3>
+                    <div class="salary-item"><span class="item-label">Basic Pay:</span><span class="item-amount">50,000.00</span></div>
+                    <div class="salary-item"><span class="item-label">Dearness Allowance (D.A):</span><span class="item-amount">25,000.00</span></div>
+                    <div class="salary-item"><span class="item-label">House Rent Allowance (HRA):</span><span class="item-amount">5,000.00</span></div>
+                    <div class="salary-item"><span class="item-label">Transport Allowance (T.A):</span><span class="item-amount">1,600.00</span></div>
+                    <div class="salary-item"><span class="item-label">DA Arrears:</span><span class="item-amount">2,000.00</span></div>
+                    <div class="salary-item"><span class="item-label">&nbsp;</span><span class="item-amount">&nbsp;</span></div>
+                    <hr class="section-total-divider">
+                    <div class="section-total"><span class="item-label">Total Emoluments:</span><span class="item-amount">83,600.00</span></div>
+                </div>
+                <div class="salary-section">
+                    <h3>Govt. Recoveries</h3>
+                    <div class="salary-item"><span class="item-label">NPS Employee Contribution:</span><span class="item-amount">7,500.00</span></div>
+                    <div class="salary-item"><span class="item-label">NPS Employer Contribution:</span><span class="item-amount">7,500.00</span></div>
+                    <div class="salary-item"><span class="item-label">Professional Tax (PT):</span><span class="item-amount">200.00</span></div>
+                    <div class="salary-item"><span class="item-label">GIS (ZP):</span><span class="item-amount">120.00</span></div>
+                    <div class="salary-item"><span class="item-label">&nbsp;</span><span class="item-amount">&nbsp;</span></div>
+                    <div class="salary-item"><span class="item-label">&nbsp;</span><span class="item-amount">&nbsp;</span></div>
+                    <hr class="section-total-divider">
+                    <div class="section-total"><span class="item-label">Total Govt. Recoveries:</span><span class="item-amount">15,320.00</span></div>
+                </div>
+                <div class="salary-section">
+                    <h3>Non-Govt. Recoveries</h3>
+                    <div class="salary-item"><span class="item-label">Income Tax:</span><span class="item-amount">2,500.00</span></div>
+                    <div class="salary-item"><span class="item-label">Co-op Bank Loan:</span><span class="item-amount">1,000.00</span></div>
+                    <div class="salary-item"><span class="item-label">LIC Premium:</span><span class="item-amount">500.00</span></div>
+                    <div class="salary-item"><span class="item-label">&nbsp;</span><span class="item-amount">&nbsp;</span></div>
+                    <div class="salary-item"><span class="item-label">&nbsp;</span><span class="item-amount">&nbsp;</span></div>
+                    <div class="salary-item"><span class="item-label">&nbsp;</span><span class="item-amount">&nbsp;</span></div>
+                    <hr class="section-total-divider">
+                    <div class="section-total"><span class="item-label">Total Non-Govt. Recoveries:</span><span class="item-amount">4,000.00</span></div>
+                </div>
+            </div>
+
+            <hr class="payslip-divider">
+
+            <div class="net-pay-section">
+                <div>Total Deductions: <span class="item-amount font-weight-bold">19,320.00</span></div>
+                <div class="net-pay-amount">NET PAY: 64,280.00</div>
+                <div class="net-pay-words">(Sixty Four Thousand Two Hundred Eighty Rupees Only.)</div>
+            </div>
+
+            <div class="payslip-footer">
+                *This is a system-generated payslip and does not require a signature.*
+            </div>
+        </div>
+    </div>
+
+    <div class="print-button-container">
+        <button class="print-button" onclick="printPayslip()">Print Payslip</button>
+    </div>
+
+    <script>
+        function printPayslip() {
+            // The @media print CSS rules will handle hiding non-payslip elements.
+            // So, a direct window.print() is sufficient here.
+            window.print();
+        }
+    </script>
+</body>
+</html>
